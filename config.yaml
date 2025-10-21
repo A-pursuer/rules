@@ -1,0 +1,188 @@
+rule-providers:
+  cn:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/cn_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.yaml"
+
+  ms:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/ms_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.yaml"
+
+  github:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/github_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/github.yaml"
+
+  youtube:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/youtube_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.yaml"
+
+  google:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/google_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.yaml"
+
+  porn:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/porn_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-porn.yaml"
+
+  ads:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/ads_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-ads-all.yaml"
+
+  openai:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/openai_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/openai.yaml"
+
+  scholar:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/scholar_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-scholar-!cn.yaml"
+
+  Crypto:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/crypto_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-cryptocurrency.yaml"
+
+  talkatone:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/talkatone_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/talkatone.yaml"
+
+  telegram:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/telegram_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/telegram.yaml"
+
+  tiktok:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/tiktok_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/tiktok.yaml"
+
+  paypal:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/paypal_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/paypal.yaml"
+
+  notion:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/notion_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/notion.yaml"
+
+  redotpay:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/redotpay_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/redotpay.yaml"
+
+  netflix:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/netflix_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/netflix.yaml"
+
+  pornhub:
+    behavior: domain
+    interval: 86400
+    path: ./self/provider/rule-set/pornhub_domain.yaml
+    type: http
+    url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/pornhub.yaml"
+
+# 存在优先级
+rules:
+  # 域名过滤
+  - DOMAIN-SUFFIX,google.com,Google
+  - DOMAIN-SUFFIX,youtube.com,YouTube
+  - DOMAIN-SUFFIX,githubusercontent.com,Github
+  - DOMAIN-SUFFIX,gstatic.com,Google
+  - DOMAIN-SUFFIX,chatgpt.com,Openai
+  - DOMAIN-SUFFIX,openai.com,Openai
+  - DOMAIN-SUFFIX,talkatone.com,Talkatone
+
+  # 代理集(尽量使用)
+  - RULE-SET,cn,DIRECT
+  - RULE-SET,ms,DIRECT
+  - RULE-SET,github,Github
+  - RULE-SET,youtube,YouTube
+  - RULE-SET,google,Google
+  - RULE-SET,openai,Openai
+  - RULE-SET,scholar,Scholar
+  - RULE-SET,Crypto,Crypto
+  - RULE-SET,talkatone,Talkatone
+  - RULE-SET,telegram,Telegram
+  - RULE-SET,tiktok,Tiktok
+  - RULE-SET,paypal,Paypal
+  - RULE-SET,notion,Notion
+  - RULE-SET,redotpay,Redotpay
+  - RULE-SET,netflix,NETFLIX
+  
+    # Ban!
+  - RULE-SET,porn,REJECT
+  - RULE-SET,ads,REJECT
+  - RULE-SET,pornhub,REJECT
+  - GEOSITE,category-porn,REJECT
+  - GEOSITE,category-ads-all,REJECT
+
+  # Geosite
+  - GEOSITE,cn,DIRECT
+  - GEOSITE,microsoft@cn,DIRECT
+  - GEOSITE,github,Github
+  - GEOSITE,twitter,Twitter
+  - GEOSITE,youtube,YouTube
+  - GEOSITE,google,Google
+  - GEOSITE,telegram,Telegram
+  - GEOSITE,netflix,NETFLIX
+  - GEOSITE,paypal,Paypal
+  - GEOSITE,category-cryptocurrency,Crypto
+  - GEOSITE,tiktok,Tiktok
+  - GEOSITE,redotpay,Redotpay
+  - GEOSITE,notion,Notion
+  - GEOSITE,geolocation-!cn,Default
+
+  # GEOIP
+  - GEOIP,google,Google
+  - GEOIP,netflix,NETFLIX
+  - GEOIP,telegram,Telegram
+  - GEOIP,twitter,Twitter
+  - GEOIP,cn,DIRECT
+  - GEOIP,private,DIRECT,no-resolve
+
+  # 默认
+  - MATCH,Default

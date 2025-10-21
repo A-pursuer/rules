@@ -1,0 +1,238 @@
+#!/bin/bash
+# 执行方法：
+# export NEW_SSH_PORT=22
+# wget https://raw.githubusercontent.com/A-pursuer/rules/refs/heads/main/basic_ops -O ./basic_ops && \
+# chmod +x ./basic_ops && \
+# sed -i "s/22111/$NEW_SSH_PORT/" ./basic_ops && \
+# ./basic_ops && rm ./basic_ops
+# ================================================================
+# 安全加固 SSHD 配置的自动化脚本
+# 1. 设置新端口 (来自变量)
+# 2. 禁用 Root 登录
+# 3. 禁用密码登录
+# 4. 确保密钥登录开启
+# ================================================================
+
+# --- 1. 在这里定义您的变量 ---
+# (!!!) 请确保这个端口没有被其他服务占用
+NEW_SSH_PORT='22111'
+
+# --- 2. 备份 (永远不要跳过这一步) ---
+# 检查备份是否已经存在，避免重复备份
+BAK_FILE="/etc/ssh/sshd_config.bak_$(date +%F)"
+if [ ! -f "$BAK_FILE" ]; then
+    echo "正在备份 /etc/ssh/sshd_config 到 $BAK_FILE ..."
+    cp /etc/ssh/sshd_config "$BAK_FILE"
+fi
+
+# --- 3. 修改配置 (使用更健壮的sed) ---
+# -E 使用扩展正则, \s* 匹配0或多个空格, ^#? 匹配有#或没有#的行首
+
+echo "正在应用配置..."
+
+# 规则 1: 设置新端口 (使用变量)
+# 删除所有旧的 Port 设置 (无论是否被注释)
+sed -i -E '/^#?\s*Port\s/d' /etc/ssh/sshd_config
+# 追加新设置
+echo "Port $NEW_SSH_PORT" >> /etc/ssh/sshd_config
+
+# 规则 2: 禁用 Root 登录
+#sed -i -E '/^#?\s*PermitRootLogin\s/d' /etc/ssh/sshd_config
+#echo "PermitRootLogin no" >> /etc/ssh/sshd_config
+
+# 规则 3: 禁用密码登录
+sed -i -E '/^#?\s*PasswordAuthentication\s/d' /etc/ssh/sshd_config
+echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+
+# 规则 4: 确保密钥登录开启
+sed -i -E '/^#?\s*PubkeyAuthentication\s/d' /etc/ssh/sshd_config
+echo "PubkeyAuthentication yes" >> /etc/ssh/sshd_config
+
+# --- 4. 最关键一步: 测试配置语法 ---
+echo "正在测试 SSH 配置语法..."
+sshd -t
+
+# --- 5. 检查测试结果并安全重启 ---
+if [ $? -eq 0 ]; then
+    echo "SSH 配置语法正确。正在重启 sshd..."
+    systemctl restart sshd
+    echo "SSHD 已重启。"
+    echo
+    echo "*******************************************************************"
+    echo " [!! 极端重要 !!] "
+    echo " SSH 端口已更改为 $NEW_SSH_PORT"
+    echo " 您必须立即更新您的防火墙规则以允许此端口！"
+    echo
+    echo " 示例 (firewalld):"
+    echo "   firewall-cmd --add-port=$NEW_SSH_PORT/tcp --permanent"
+    echo "   firewall-cmd --reload"
+    echo
+    echo " 示例 (ufw):"
+    echo "   ufw allow $NEW_SSH_PORT/tcp"
+    echo "   ufw reload"
+    echo "*******************************************************************"
+else
+    echo "错误: SSH 配置语法错误！"
+    echo "请手动检查 /etc/ssh/sshd_config 文件。"
+    echo "正在从备份 $BAK_FILE 中恢复..."
+    cp "$BAK_FILE" /etc/ssh/sshd_config
+    echo "配置已恢复，SSHD 未重启。"
+fi
+
+# ================================================================
+# 脚本功能: 检查并启用 TCP BBR 和 FQ 队列调度
+# 特性: 
+#   - 检查 Root 权限
+#   - 检查内核模块可用性
+#   - 幂等地备份和修改 /etc/sysctl.conf
+#   - 实时应用配置并验证
+# ================================================================
+
+# --- 1. 检查权限 ---
+if [ "$(id -u)" -ne 0 ]; then
+    echo "错误：此脚本必须以 root 权限运行。"
+    echo "请尝试使用 'sudo ./enable_bbr.sh' 运行"
+    exit 1
+fi
+
+# --- 2. 定义变量 ---
+SYSCTL_CONF="/etc/sysctl.conf"
+SYSCTL_BACKUP_FILE="/etc/sysctl.conf.bak_$(date +%F)"
+
+# 要添加的配置
+FQ_SETTING="net.core.default_qdisc=fq"
+BBR_SETTING="net.ipv4.tcp_congestion_control=bbr"
+
+# --- 3. 检查 BBR 模块可用性 ---
+echo "正在检查内核模块..."
+
+# modprobe 会在模块已加载时无害退出，或在可用时加载它
+# 如果模块不存在，它会报错
+if ! modprobe tcp_bbr; then
+    echo "错误：无法加载 'tcp_bbr' 模块。"
+    echo "您的内核可能不支持 BBR。"
+    echo "请确保您的 Linux 内核版本 >= 4.9。"
+    exit 1
+fi
+
+echo "内核模块检查通过。"
+
+# --- 4. 幂等地备份 ---
+if [ ! -f "$SYSCTL_BACKUP_FILE" ]; then
+    echo "正在备份 $SYSCTL_CONF 到 $SYSCTL_BACKUP_FILE ..."
+    cp "$SYSCTL_CONF" "$SYSCTL_BACKUP_FILE"
+else
+    echo "今日备份 $SYSCTL_BACKUP_FILE 已存在，跳过备份。"
+fi
+
+# --- 5. 幂等地修改配置 ---
+echo "正在更新 $SYSCTL_CONF ..."
+
+# 规则 1: 设置 FQ
+# 先删除所有现有的 net.core.default_qdisc 设置 (无论是否注释)
+sed -i -E '/^#?\s*net\.core\.default_qdisc\s*=/d' "$SYSCTL_CONF"
+# 在文件末尾添加正确的设置
+echo "$FQ_SETTING" >> "$SYSCTL_CONF"
+
+# 规则 2: 设置 BBR
+# 先删除所有现有的 net.ipv4.tcp_congestion_control 设置
+sed -i -E '/^#?\s*net\.ipv4\.tcp_congestion_control\s*=/d' "$SYSCTL_CONF"
+# 在文件末尾添加正确的设置
+echo "$BBR_SETTING" >> "$SYSCTL_CONF"
+
+echo "配置文件更新完毕。"
+
+# --- 6. 实时应用配置 ---
+echo "正在应用 sysctl 配置..."
+if sysctl -p; then
+    echo "配置已成功应用。"
+else
+    echo "错误：应用 sysctl 配置时出错。"
+    echo "请检查 $SYSCTL_CONF 文件中的语法。"
+    echo "正在从 $SYSCTL_BACKUP_FILE 恢复..."
+    cp "$SYSCTL_BACKUP_FILE" "$SYSCTL_CONF"
+    exit 1
+fi
+
+# --- 7. 最终验证 ---
+echo
+echo "--- 正在验证当前生效的内核参数 ---"
+
+# 检查 BBR
+BBR_CURRENT=$(sysctl -n net.ipv4.tcp_congestion_control)
+echo "当前拥塞控制算法: $BBR_CURRENT"
+if [ "$BBR_CURRENT" != "bbr" ]; then
+    echo "警告：BBR 未成功设置为当前的拥塞控制算法！"
+fi
+
+# 检查 FQ
+FQ_CURRENT=$(sysctl -n net.core.default_qdisc)
+echo "当前默认队列调度: $FQ_CURRENT"
+if [ "$FQ_CURRENT" != "fq" ]; then
+    echo "警告：FQ 未成功设置为当前的队列调度！"
+fi
+
+echo
+echo "BBR 启用脚本执行完毕。"
+
+# ================================================================
+# 脚本功能: 检查并设置系统时区为 Asia/Shanghai
+# 特性: 
+#   - 检查 Root 权限
+#   - 检查 'timedatectl' 命令是否存在
+#   - 使用 'timedatectl show' 进行健壮的检查
+#   - 仅在时区不匹配时才执行修改
+#   - 报告修改后的时间和状态
+# ================================================================
+
+# --- 1. 定义目标时区 ---
+TARGET_ZONE="Asia/Shanghai"
+
+# --- 2. 检查权限 ---
+if [ "$(id -u)" -ne 0 ]; then
+    echo "错误：此脚本必须以 root 权限运行。"
+    echo "请尝试使用 'sudo ./set_timezone_shanghai.sh' 运行"
+    exit 1
+fi
+
+# --- 3. 检查 'timedatectl' 命令是否存在 ---
+# command -v 是检查命令是否存在的标准方法
+# &> /dev/null 是将标准输出和标准错误都重定向到“黑洞”，我们不关心输出，只关心退出状态
+if ! command -v timedatectl &> /dev/null; then
+    echo "错误：未找到 'timedatectl' 命令。"
+    echo "此脚本仅适用于使用 systemd (systemd-timedated) 的系统。"
+    exit 1
+fi
+
+# --- 4. 获取当前时区 (使用为脚本设计的 'show' 命令) ---
+# 'timedatectl show --property=Timezone --value' 是最健壮的方法
+# 它只会输出时区名称，例如 'America/New_York' 或 'Asia/Shanghai'
+# 避免了 'grep' 和 'awk' 解析 'timedatectl' 这种易变的文本输出
+current_zone=$(timedatectl show --property=Timezone --value)
+
+# --- 5. 比较并执行 ---
+if [ "$current_zone" == "$TARGET_ZONE" ]; then
+    echo "检查通过：当前时区已经是 $TARGET_ZONE，无需修改。"
+else
+    echo "当前时区为 '$current_zone'，与目标 $TARGET_ZONE 不符。"
+    echo "正在设置时区..."
+    
+    # 执行设置命令，并检查其是否成功
+    # 'if command' 结构会捕获 'command' 的退出状态码
+    if timedatectl set-timezone "$TARGET_ZONE"; then
+        echo "成功：时区已设置为 $TARGET_ZONE。"
+    else
+        echo "错误：设置时区失败！"
+        echo "请检查时区名称 '$TARGET_ZONE' 是否拼写正确。"
+        exit 1
+    fi
+fi
+
+# --- 6. 输出修改生效后的时间和状态 ---
+echo "------------------------------------"
+echo "修改已生效，当前时间和时区状态："
+
+# 'timedatectl' 会显示本地时间、UTC时间和时区信息
+# 这是确认更改的最佳方式
+timedatectl
+echo "------------------------------------"

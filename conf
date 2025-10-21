@@ -1,0 +1,35 @@
+listen: :HYS_PORT
+
+tls:
+  cert: /etc/hysteria/cert/HYS_DOMAIN.cer
+  key: /etc/hysteria/cert/HYS_DOMAIN.key
+
+auth:
+  type: password
+  password: HYS_PASS
+
+bandwidth:
+  up: 0 gbps
+  down: 0 gbps
+
+speedTest: true
+
+masquerade:
+  type: file
+  file:
+    dir: /etc/hysteria/web/
+  listenHTTP: :80
+  listenHTTPS: :HYS_PORT
+  forceHTTPS: true
+
+acl:
+  inline:
+    - direct(geosite:google)
+    - direct(geosite:youtube)
+    - direct(geosite:github)
+    - reject(geosite:geolocation-cn)
+    - reject(geoip:cn)
+    - reject(geosite:cn)
+    - reject(geosite:category-porn)
+    - direct(geosite:geolocation-!cn)
+  geoUpdateInterval: 168h

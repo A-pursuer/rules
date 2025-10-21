@@ -1,0 +1,102 @@
+#!/bin/bash
+# crontab -e
+
+# 定义路径和文件名
+log_dir="/var/log/xray"
+access_log="${log_dir}/access.log"
+error_log="${log_dir}/error.log"
+
+######## 修改设备名
+# 报头
+device=DEVICE
+current_time=$(date "+%Y-%m-%d %H:%M:%S")  # 获取当前日期和时间
+status_message="${device}：xray日志清理完毕\n${current_time}"
+
+# 停止 Xray 服务的函数
+stop_xray_service() {
+    systemctl stop xray
+}
+
+# 清理日志并重新创建空文件的函数
+clean_logs() {
+    # 停止 Xray 服务
+    stop_xray_service
+
+    # 检查日志文件是否存在并清除内容
+    if [ -f "$access_log" ]; then
+        > "$access_log"
+    else
+        touch "$access_log"
+    fi
+
+    if [ -f "$error_log" ]; then
+        > "$error_log"
+    else
+        touch "$error_log"
+    fi
+
+    # 设置日志文件权限
+    chmod 666 "$access_log"
+    chmod 666 "$error_log"
+}
+
+# 启动 Xray 服务并检查状态的函数
+start_xray_service() {
+    systemctl start xray
+    sleep 5  # 等待几秒钟让服务初始化
+    local service_status
+    service_status=$(systemctl is-active xray)
+    if [ "$service_status" = "active" ]; then
+        read_error_log "Xray 服务成功启动"
+    else
+        read_error_log "Xray 服务启动失败"
+    fi
+}
+
+# 检查 Xray 配置的函数
+check_xray_configuration() {
+    local check_command_output
+    check_command_output=$(/usr/local/bin/xray -test -c /usr/local/etc/xray/config.json 2>&1)
+    if [[ "$check_command_output" == *"Configuration OK."* ]]; then
+        read_error_log "Xray 配置正常"
+    else
+        read_error_log "Xray 配置出错"
+    fi
+}
+
+# 读取 error.log 并发送 Telegram 消息的函数
+read_error_log() {
+    status_message="${status_message}\n${1}"
+    error_content=$(tail -n 10 "$error_log")  # 读取 error.log 的最后10行
+}
+
+# 发送 Telegram 消息的函数
+send_telegram_message() {
+    local message="${1//\\n/%0A}"
+    local bot_token=TG_TOKEN
+    local chat_id=TG_ID
+
+    # 使用 Bot API 的 URL 发送消息
+    local url="https://api.telegram.org/bot${bot_token}/sendMessage"
+
+    # 使用 curl 发送消息
+    curl -s -X POST "${url}" --data-urlencode chat_id="${chat_id}" -d text="${message}" > /dev/null
+}
+
+# 发送消息
+sent_message() {
+    local final_message="${status_message}\n错误日志（后10行）:\n${error_content}"
+    send_telegram_message "$final_message"
+}
+
+# 调用函数清理日志
+clean_logs
+
+# 检查 Xray 配置
+check_xray_configuration
+
+# 再次启动 Xray 服务并检查是否正常启动
+start_xray_service
+
+# 发送
+sent_message

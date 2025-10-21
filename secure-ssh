@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# --- 配置区 ---
+token=TG_TOKEN
+id=TG_ID
+hostname=DEVICE
+
+# --- 脚本区 ---
+# 如果 token 未配置，则退出脚本
+if [ -z "${token}" ]; then
+    # echo "错误：token 未配置，无法发送通知。" >&2 # 如果需要在终端显示错误，可以取消本行注释
+    exit 1
+fi
+
+# 检查是否为 SSH 登录会话
+if [ -n "$SSH_CONNECTION" ]; then
+
+    # 1. 获取基础信息
+    HOSTNAME=$hostname
+    LOGIN_USER=$USER
+    LOGIN_TIME=$(TZ=UTC-8 date "+%Y-%m-%d %H:%M:%S") # 使用 UTC+8 (北京时间)
+    LOGIN_IP=$(echo $SSH_CONNECTION | awk '{print $1}')
+
+    # 2. 获取系统状态信息 (更丰富的内容)
+    UPTIME_INFO=$(uptime | sed 's/,  */, /g') # 获取系统运行时间及平均负载
+    DISK_INFO=$(df -h / | awk 'NR==2 {print "总计:"$2 ", 已用:"$3 " ("$5")"}') # 获取根分区磁盘使用情况
+    LAST_LOGIN_INFO=$(last -n 5) # 获取上一次登录信息
+
+    # 描述 (desp)
+    desp="
+🛡️ 服务器安全登录提醒: ${LOGIN_USER}@${HOSTNAME}
+
+您好，系统检测到有新的 SSH 登录活动，详情如下：
+
+- 主机名称: ${HOSTNAME}
+- 登录时间: ${LOGIN_TIME} (北京时间)
+- 登录用户: ${LOGIN_USER}
+- 来源 IP: ${LOGIN_IP}
+
+系统当前状态
+
+- 系统负载: ${UPTIME_INFO}
+- 磁盘使用: ${DISK_INFO}
+
+最近登录历史
+${LAST_LOGIN_INFO}
+"
+
+    # 4. 使用 curl 发送通知
+    # 使用 --data-urlencode 来确保特殊字符被正确编码
+    curl -v "https://api.telegram.org/bot${token}/sendMessage?chat_id=${id}" --data-binary "&text=${desp}" 1>/dev/null 2>&1
+fi
