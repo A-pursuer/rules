@@ -24,12 +24,6 @@ masquerade:
 
 acl:
   inline:
-    - direct(geosite:google)
-    - direct(geosite:youtube)
-    - direct(geosite:github)
-    - reject(geosite:geolocation-cn)
     - reject(geoip:cn)
-    - reject(geosite:cn)
-    - reject(geosite:category-porn)
-    - direct(geosite:geolocation-!cn)
+    - direct(geoip:!cn)
   geoUpdateInterval: 168h
