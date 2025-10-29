@@ -1,0 +1,12 @@
+[Interface]
+PrivateKey = WG_PRIKEY
+Address = WG_ADDR
+ListenPort = WG_PORT
+MTU = 1280
+DNS = 8.8.8.8
+
+[Peer]
+PublicKey = WG_PUB
+Endpoint = WG_EP
+AllowedIPs = WG_IPS
+PersistentKeepalive = 25
