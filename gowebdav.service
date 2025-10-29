@@ -1,0 +1,26 @@
+[Unit]
+Description=GoWebDAV Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+WorkingDirectory=WORK_PATH
+
+# 您的启动命令
+ExecStart=EXEC_CMD
+
+# 保证服务在失败时自动重启
+Restart=always
+# 重启间隔时间
+RestartSec=3
+
+# 确保进程被正确终止
+KillSignal=SIGINT
+TimeoutStopSec=5
+
+[Install]
+# 表明这个服务应该在多用户模式下启用
+WantedBy=multi-user.target
