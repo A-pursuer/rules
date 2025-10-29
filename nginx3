@@ -1,0 +1,65 @@
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+
+    server_name X_UI_DOMAIN;
+
+    server_tokens off;
+
+    ssl_certificate X_SSL_PATH_CERT;
+    ssl_certificate_key X_SSL_PATH_KEY;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+    location = /X_UI_PATH {
+        return 301 https://$host/X_UI_PATH/;
+    }
+
+    location = /X_UI_PATH-sub {
+        return 301 https://$host/X_UI_PATH-sub/;
+    }
+
+    location /X_UI_PATH/ {
+        proxy_pass https://127.0.0.1:X_UI_PORT/X_UI_PATH/;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
+    }
+    location /X_UI_PATH-sub/ {
+        proxy_pass https://127.0.0.1:X_RT_PORT/X_UI_PATH-sub/;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
+    }
+
+    location / {
+
+        root PATH_TO_HYS_WEB;
+        
+        try_files /index.html =404;
+    }
+}
