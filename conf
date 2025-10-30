@@ -18,7 +18,6 @@ masquerade:
   type: file
   file:
     dir: /etc/hysteria/web/
-  listenHTTP: :80
   listenHTTPS: :HYS_PORT
   forceHTTPS: true
 
