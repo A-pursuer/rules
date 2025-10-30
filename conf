@@ -25,5 +25,4 @@ masquerade:
 acl:
   inline:
     - reject(geoip:cn)
-    - direct(geoip:!cn)
   geoUpdateInterval: 168h
